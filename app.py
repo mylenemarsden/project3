@@ -97,8 +97,7 @@ data.reset_index()
 
 work_year = data["work_year"].sort_values().unique()
 company_location = data["country"].sort_values().unique()
-print(company_location)
-print(type(company_location))
+
 external_stylesheets = [
     {
         "href": (
@@ -114,7 +113,8 @@ app.title = "Salary Analytics"
 summary_work_year = data.groupby('work_year').agg({'work_year':'size', 'salary':'mean'}).rename(columns={'work_year':'count','mean':'mean_sent'}).reset_index()
 summary_work_year_sanitized_data=summary_work_year[summary_work_year['count'].ge(30)].sort_values(by=['salary'],  ascending=False).head(10)
 summary_work_year_sanitized_data["work_year"]=summary_work_year_sanitized_data["work_year"].map(str)
-fig = px.bar(summary_work_year_sanitized_data, x="work_year", y="count", title='Job Count per Year', color_discrete_sequence=px.colors.sequential.RdBu_r)
+
+fig = px.bar(summary_work_year_sanitized_data.sort_values(by=['work_year'],  ascending=True), x="work_year", y="count", title='Job Count per Year', color_discrete_sequence=px.colors.sequential.RdBu_r)
 
 
 app.layout = html.Div(
@@ -196,7 +196,13 @@ app.layout = html.Div(
                     ),
                     className="card",
                 ),
-
+                html.Div(
+                    children=dcc.Graph(
+                        id="top-ten-indemand-chart-figure",
+                        config={"displayModeBar": False},
+                    ),
+                     className="card",
+                ),
                 html.Div(
                     children=dcc.Graph(
                         id="top-ten-chart-figure",
@@ -212,8 +218,6 @@ app.layout = html.Div(
                      className="card",
                 ),
                 
-
-
                 
             ],
             className="wrapper",
@@ -225,6 +229,7 @@ app.layout = html.Div(
 @app.callback(
     Output("price-chart-figure", "figure"),
     Output("salary-chart-figure", "figure"),
+    Output("top-ten-indemand-chart-figure", "figure"),
     Output("top-ten-chart-figure", "figure"),
     Output("top-ten-table-figure", "figure"),
 
@@ -255,7 +260,7 @@ def update_charts(work_year,company_location):
     remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 50)], fillcolor="#eab676",marker=dict(color='#eab676'), quartilemethod="inclusive", name="Partially remote (~50%)"))
     remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 100)], fillcolor="#e28743",marker=dict(color='#e28743'), quartilemethod="exclusive", name="Fully remote (>80%)"))
     remote_ratio_plot.update_traces(boxpoints='all', jitter=0)
-    remote_ratio_plot.update_layout(title=dict(text="Media Salary per Work Type"))
+    remote_ratio_plot.update_layout(title=dict(text="Median Salary per Work Type"))
 
     summary = filtered_data.groupby('job_title').agg({'job_title':'size', 'salary_in_usd':'mean'}).rename(columns={'job_title':'count','mean':'mean_sent'}).reset_index()
     sanitized_data=summary.sort_values(by=['salary_in_usd'],  ascending=False).head(10)
@@ -298,9 +303,55 @@ def update_charts(work_year,company_location):
         overlaying="y",
         tickmode="auto",
         ),
-        title=dict(text="Top 10 Jobs")
+        title=dict(text="Top 10 Highest Paying Jobs")
     )
-    return fig_pie_chart,remote_ratio_plot,fig_bar_line,fig_table_data
+
+
+
+
+    sanitized_data2=summary.sort_values(by=['count'],  ascending=False).head(10)
+    print(sanitized_data2)
+    count=sanitized_data2["count"].values
+    job_title=sanitized_data2["job_title"].values
+    salary_in_usd=sanitized_data2["salary_in_usd"].values
+    fig_bar_line2 = go.Figure(
+    data=go.Bar(
+        x=job_title,
+        y=count,
+        name="Count of Jobs",
+        marker=dict(color="#1e81b0"),
+        )
+    )
+
+    fig_bar_line2.add_trace(
+    go.Scatter(
+        x=job_title,
+        y=salary_in_usd,
+        yaxis="y2",
+        name="Average Salary",
+        marker=dict(color="crimson"),
+        )
+    )
+
+    fig_bar_line2.update_layout(
+    legend=dict(orientation="v"),
+    yaxis=dict(
+        title=dict(text="Count of Jobs"),
+        side="left",
+    ),
+    yaxis2=dict(
+        title=dict(text="Average Salary"),
+        side="right",
+        overlaying="y",
+        tickmode="auto",
+        ),
+        title=dict(text="Top 10 In-demand Paying Jobs")
+    )
+
+
+
+
+    return fig_pie_chart,remote_ratio_plot,fig_bar_line2,fig_bar_line,fig_table_data
 
 if __name__ == "__main__":
     app.run_server(debug=True)
