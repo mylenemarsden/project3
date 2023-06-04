@@ -9,15 +9,20 @@ import plotly.figure_factory as ff
 import numpy as np
 import sys
 
+# Making an HTTP request to the web api that is locally run
 api_url = "http://127.0.0.1:5000/api/v1/resources/salaries/all"
 response = requests.get(api_url)
 
+# Reading the response into a dataframe
 data = pd.read_json(response.json())
+
+# Creating a new column called work type to differentiate among no remote, partially remote, and fully remote work.
 data.loc[data["remote_ratio"]==0, 'work_type'] =  'No Remote Work (<20%)'
 data.loc[data["remote_ratio"]==50, 'work_type'] =  'Partially remote (~50%)'
 data.loc[data["remote_ratio"]==100, 'work_type'] =  'Fully remote (>80%)'
 data.reset_index()
 
+# Creating a new column called country based on the country codes in the existing column comany_location
 data.loc[data["company_location"]=='AE', 'country'] =  'United Arab Emirates'
 data.loc[data["company_location"]=='AL', 'country'] =  'Albania'
 data.loc[data["company_location"]=='AM', 'country'] =  'Armenia'
@@ -95,8 +100,10 @@ data.loc[data["company_location"]=='ZA', 'country'] =  'South Africa'
 
 data.reset_index()
 
+# Listing the unique years and locations into the new variables
 work_year = data["work_year"].sort_values().unique()
 company_location = data["country"].sort_values().unique()
+
 
 external_stylesheets = [
     {
@@ -116,7 +123,7 @@ summary_work_year_sanitized_data["work_year"]=summary_work_year_sanitized_data["
 
 fig = px.bar(summary_work_year_sanitized_data.sort_values(by=['work_year'],  ascending=True), x="work_year", y="count", title='Job Count per Year', color_discrete_sequence=px.colors.sequential.RdBu_r)
 
-
+# Defines the dashboard format
 app.layout = html.Div(
     children=[
         html.Div(
@@ -134,6 +141,8 @@ app.layout = html.Div(
             ],
             className="header",
         ),
+
+        # Creating the filters
         html.Div(
             children=[
                 html.Div(
@@ -175,6 +184,8 @@ app.layout = html.Div(
         ),
         html.Div(
             children=[
+
+                # Job count per year
                 html.Div(
                     children=dcc.Graph(
                         id="bar-chart",
@@ -182,6 +193,8 @@ app.layout = html.Div(
                     ),
                      className="card",
                 ),
+
+                # Salary per work year 
                 html.Div(
                     children=dcc.Graph(
                         id="price-chart-figure",
@@ -189,13 +202,16 @@ app.layout = html.Div(
                      className="card",
                 ),
 
-                 html.Div(
+                # Median Salary per work type
+                html.Div(
                     children=dcc.Graph(
                         id="salary-chart-figure",
                         config={"displayModeBar": False},
                     ),
                     className="card",
                 ),
+
+                # Top 10 in demand high paying jobs 
                 html.Div(
                     children=dcc.Graph(
                         id="top-ten-indemand-chart-figure",
@@ -203,6 +219,8 @@ app.layout = html.Div(
                     ),
                      className="card",
                 ),
+
+                # Top 10 highest paying jobs
                 html.Div(
                     children=dcc.Graph(
                         id="top-ten-chart-figure",
@@ -210,6 +228,8 @@ app.layout = html.Div(
                     ),
                      className="card",
                 ),
+
+                # Top 10 highest paying jobs in table, sorted according to salary
                 html.Div(
                     children=dcc.Graph(
                         id="top-ten-table-figure",
@@ -218,14 +238,13 @@ app.layout = html.Div(
                      className="card",
                 ),
                 
-                
             ],
             className="wrapper",
         ),
     ]
 )
 
-
+# Dash function to update 5 figures based on the user's choice of filters
 @app.callback(
     Output("price-chart-figure", "figure"),
     Output("salary-chart-figure", "figure"),
@@ -235,8 +254,8 @@ app.layout = html.Div(
 
     Input("work-year-filter", "value"),
     Input("company-location-filter", "value"),
- 
 )
+
 def update_charts(work_year,company_location):
 
     print("workyear: " + str(work_year))
@@ -254,7 +273,7 @@ def update_charts(work_year,company_location):
 
     fig_pie_chart = px.pie(filtered_data, values='salary_in_usd', names='work_type', title='Salary per Work Year', color_discrete_sequence=px.colors.sequential.RdBu_r)
 
-    #eab676
+    # Designing plot for Median Salary per work type
     remote_ratio_plot = go.Figure()
     remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 0)],  fillcolor="#042f66",marker=dict(color='#042f66'), quartilemethod="linear", name="No Remote Work (<20%)" ))
     remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 50)], fillcolor="#eab676",marker=dict(color='#eab676'), quartilemethod="inclusive", name="Partially remote (~50%)"))
@@ -262,16 +281,18 @@ def update_charts(work_year,company_location):
     remote_ratio_plot.update_traces(boxpoints='all', jitter=0)
     remote_ratio_plot.update_layout(title=dict(text="Median Salary per Work Type"))
 
+    # Creating the data for job titles, their count, and their average salaries
     summary = filtered_data.groupby('job_title').agg({'job_title':'size', 'salary_in_usd':'mean'}).rename(columns={'job_title':'count','mean':'mean_sent'}).reset_index()
     sanitized_data=summary.sort_values(by=['salary_in_usd'],  ascending=False).head(10)
-
     count=sanitized_data["count"].values
     job_title=sanitized_data["job_title"].values
     salary_in_usd=sanitized_data["salary_in_usd"].values
-
     sanitized_data.rename(columns = {'count':'Count', 'job_title':'Job Description','salary_in_usd':'Salary'}, inplace = True)
+    
+    # Creating the table
     fig_table_data=ff.create_table(sanitized_data.round(2), height_constant=60, colorscale=px.colors.sequential.Blues_r,)
 
+    # Creating the bar figure for job counts of the top 10 highest paying jobs
     fig_bar_line = go.Figure(
     data=go.Bar(
         x=job_title,
@@ -280,7 +301,7 @@ def update_charts(work_year,company_location):
         marker=dict(color="#1e81b0"),
         )
     )
-
+    # Adding a scatter line representing the average salary
     fig_bar_line.add_trace(
     go.Scatter(
         x=job_title,
@@ -290,13 +311,14 @@ def update_charts(work_year,company_location):
         marker=dict(color="crimson"),
         )
     )
-
+    # Setting the axis for job counts to the left
     fig_bar_line.update_layout(
     legend=dict(orientation="v"),
     yaxis=dict(
         title=dict(text="Count of Jobs"),
         side="left",
     ),
+    # Setting the axis for average salary to the right, overlayed on the first axis.
     yaxis2=dict(
         title=dict(text="Average Salary"),
         side="right",
@@ -306,14 +328,13 @@ def update_charts(work_year,company_location):
         title=dict(text="Top 10 Highest Paying Jobs")
     )
 
-
-
-
+    # This section creates the figure for top 10 in-demand highest paying jobs
     sanitized_data2=summary.sort_values(by=['count'],  ascending=False).head(10)
     print(sanitized_data2)
     count=sanitized_data2["count"].values
     job_title=sanitized_data2["job_title"].values
     salary_in_usd=sanitized_data2["salary_in_usd"].values
+    # Creating the bar figure for the job count
     fig_bar_line2 = go.Figure(
     data=go.Bar(
         x=job_title,
@@ -322,7 +343,7 @@ def update_charts(work_year,company_location):
         marker=dict(color="#1e81b0"),
         )
     )
-
+    # Creating the scatter line for the average salary
     fig_bar_line2.add_trace(
     go.Scatter(
         x=job_title,
@@ -332,13 +353,15 @@ def update_charts(work_year,company_location):
         marker=dict(color="crimson"),
         )
     )
-
+    # Layouting the figures
+    # Setting the count of jobs to be the left vertical axis
     fig_bar_line2.update_layout(
     legend=dict(orientation="v"),
     yaxis=dict(
         title=dict(text="Count of Jobs"),
         side="left",
     ),
+    # Setting the average salary to be the right vertical axis
     yaxis2=dict(
         title=dict(text="Average Salary"),
         side="right",
@@ -348,10 +371,7 @@ def update_charts(work_year,company_location):
         title=dict(text="Top 10 In-demand Paying Jobs")
     )
 
-
-
-
-    return fig_pie_chart,remote_ratio_plot,fig_bar_line2,fig_bar_line,fig_table_data
+    return fig_pie_chart, remote_ratio_plot, fig_bar_line2, fig_bar_line, fig_table_data
 
 if __name__ == "__main__":
     app.run_server(debug=True)

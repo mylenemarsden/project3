@@ -7,7 +7,6 @@ import bson.json_util as json_util
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
-
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 db = myclient["kaggle"]
 salaries = db["salaries"]
@@ -16,8 +15,8 @@ db_data=json_util.dumps(list(cursor))
 
 @app.route('/', methods=['GET'])
 def home():
-    return '''<h1>Distant Reading Archive</h1>
-<p>A prototype API for distant reading of science fiction novels.</p>'''
+    return '''<h1>Salary Analysis</h1>
+    <p>Data Science Jobs Salary Analysis</p>'''
 
 
 @app.route('/api/v1/resources/salaries/all', methods=['GET'])
