@@ -16,8 +16,8 @@ response = requests.get(api_url)
 # Reading the response into a dataframe
 data = pd.read_json(response.json())
 
-# Creating a new column called work type to differentiate among no remote, partially remote, and fully remote work.
-data.loc[data["remote_ratio"]==0, 'work_type'] =  'No Remote Work (<20%)'
+# Creating a new column called work type to differentiate among non-remote, partially remote, and fully remote work.
+data.loc[data["remote_ratio"]==0, 'work_type'] =  'Non-Remote Work (<20%)'
 data.loc[data["remote_ratio"]==50, 'work_type'] =  'Partially remote (~50%)'
 data.loc[data["remote_ratio"]==100, 'work_type'] =  'Fully remote (>80%)'
 data.reset_index()
@@ -115,13 +115,13 @@ external_stylesheets = [
     },
 ]
 app = Dash(__name__, external_stylesheets=external_stylesheets)
-app.title = "Salary Analytics"
+app.title = "Career Analysis for Data Science Across the Globe"
 
 summary_work_year = data.groupby('work_year').agg({'work_year':'size', 'salary':'mean'}).rename(columns={'work_year':'count','mean':'mean_sent'}).reset_index()
 summary_work_year_sanitized_data=summary_work_year[summary_work_year['count'].ge(30)].sort_values(by=['salary'],  ascending=False).head(10)
 summary_work_year_sanitized_data["work_year"]=summary_work_year_sanitized_data["work_year"].map(str)
 
-fig = px.bar(summary_work_year_sanitized_data.sort_values(by=['work_year'],  ascending=True), x="work_year", y="count", title='Job Count per Year', color_discrete_sequence=px.colors.sequential.RdBu_r)
+fig = px.bar(summary_work_year_sanitized_data.sort_values(by=['work_year'],  ascending=True), x="work_year", y="count", title='2020-2023 Worldwide Employment Count Record for Data Science', color_discrete_sequence=px.colors.sequential.RdBu_r)
 
 # Defines the dashboard format
 app.layout = html.Div(
@@ -129,12 +129,11 @@ app.layout = html.Div(
         html.Div(
             children=[
                 html.H1(
-                    children="Salary Analytics", className="header-title"
+                    children="Career Analysis for Data Science Across the Globe", className="header-title"
                 ),
                 html.P(
                     children=(
-                        "Analyze the salary worldwide post pandemic" 
-                        " between 2020 and 2023"
+                        "Discovering Career and Salary Trends between 2020 to 2023" 
                     ),
                     className="header-description",
                 ),
@@ -194,10 +193,10 @@ app.layout = html.Div(
                      className="card",
                 ),
 
-                # Salary per work year 
+                # Remote or Non-remote Work Type (%) 
                 html.Div(
                     children=dcc.Graph(
-                        id="price-chart-figure",
+                        id="worktype-chart-figure",
                     ),
                      className="card",
                 ),
@@ -246,8 +245,8 @@ app.layout = html.Div(
 
 # Dash function to update 5 figures based on the user's choice of filters
 @app.callback(
-    Output("price-chart-figure", "figure"),
     Output("salary-chart-figure", "figure"),
+    Output("worktype-chart-figure", "figure"),
     Output("top-ten-indemand-chart-figure", "figure"),
     Output("top-ten-chart-figure", "figure"),
     Output("top-ten-table-figure", "figure"),
@@ -271,11 +270,11 @@ def update_charts(work_year,company_location):
         filtered_data = data.query("work_year == @work_year and country == @company_location")
 
 
-    fig_pie_chart = px.pie(filtered_data, values='salary_in_usd', names='work_type', title='Salary per Work Year', color_discrete_sequence=px.colors.sequential.RdBu_r)
+    fig_pie_chart = px.pie(filtered_data, values='salary_in_usd', names='work_type', title=' Remote or Non-remote Work Type (%)', color_discrete_sequence=px.colors.sequential.RdBu_r)
 
     # Designing plot for Median Salary per work type
     remote_ratio_plot = go.Figure()
-    remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 0)],  fillcolor="#042f66",marker=dict(color='#042f66'), quartilemethod="linear", name="No Remote Work (<20%)" ))
+    remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 0)],  fillcolor="#042f66",marker=dict(color='#042f66'), quartilemethod="linear", name="Non-Remote Work (<20%)" ))
     remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 50)], fillcolor="#eab676",marker=dict(color='#eab676'), quartilemethod="inclusive", name="Partially remote (~50%)"))
     remote_ratio_plot.add_trace(go.Box(y=filtered_data['salary_in_usd'][(filtered_data['remote_ratio'] == 100)], fillcolor="#e28743",marker=dict(color='#e28743'), quartilemethod="exclusive", name="Fully remote (>80%)"))
     remote_ratio_plot.update_traces(boxpoints='all', jitter=0)
@@ -328,7 +327,7 @@ def update_charts(work_year,company_location):
         title=dict(text="Top 10 Highest Paying Jobs")
     )
 
-    # This section creates the figure for top 10 in-demand highest paying jobs
+    # This section creates the figure for top 10 High Demand Career in Data Science vs Salary
     sanitized_data2=summary.sort_values(by=['count'],  ascending=False).head(10)
     print(sanitized_data2)
     count=sanitized_data2["count"].values
@@ -368,7 +367,7 @@ def update_charts(work_year,company_location):
         overlaying="y",
         tickmode="auto",
         ),
-        title=dict(text="Top 10 In-demand Paying Jobs")
+        title=dict(text="Top 10 High Demand Career in Data Science vs Salary")
     )
 
     return fig_pie_chart, remote_ratio_plot, fig_bar_line2, fig_bar_line, fig_table_data
